@@ -296,74 +296,91 @@ function syncFormToState() {
 
 function syncStateToForm() {
   // Empresa
-  $('e-nombre').value = state.empresa.nombre;
-  $('e-email').value = state.empresa.email;
-  $('e-tel').value = state.empresa.telefono;
-  $('e-dir').value = state.empresa.direccion;
-  $('e-web').value = state.empresa.web;
-  $('e-tag').value = state.empresa.tagline;
+  const eNombre = $('e-nombre'); if (eNombre) eNombre.value = state.empresa.nombre;
+  const eEmail = $('e-email'); if (eEmail) eEmail.value = state.empresa.email;
+  const eTel = $('e-tel'); if (eTel) eTel.value = state.empresa.telefono;
+  const eDir = $('e-dir'); if (eDir) eDir.value = state.empresa.direccion;
+  const eWeb = $('e-web'); if (eWeb) eWeb.value = state.empresa.web;
+  const eTag = $('e-tag'); if (eTag) eTag.value = state.empresa.tagline;
 
   // Producto
-  $('p-nombre').value = state.producto.nombre;
-  $('p-subtitulo').value = state.producto.subtitulo;
-  if ($('p-scale')) { $('p-scale').value = state.producto.scale; $('val-scale').innerText = state.producto.scale + 'x'; }
-  if ($('p-x')) { $('p-x').value = state.producto.x; $('val-x').innerText = state.producto.x + '%'; }
-  if ($('p-y')) { $('p-y').value = state.producto.y; $('val-y').innerText = state.producto.y + '%'; }
-  if ($('p-rotate')) { $('p-rotate').value = state.producto.rotate; $('val-rot').innerText = state.producto.rotate + '°'; }
+  const pNombre = $('p-nombre'); if (pNombre) pNombre.value = state.producto.nombre;
+  const pSub = $('p-subtitulo'); if (pSub) pSub.value = state.producto.subtitulo;
+
+  if ($('p-scale')) { $('p-scale').value = state.producto.scale; if ($('val-scale')) $('val-scale').innerText = state.producto.scale + 'x'; }
+  if ($('p-x')) { $('p-x').value = state.producto.x; if ($('val-x')) $('val-x').innerText = state.producto.x + '%'; }
+  if ($('p-y')) { $('p-y').value = state.producto.y; if ($('val-y')) $('val-y').innerText = state.producto.y + '%'; }
+  if ($('p-rotate')) { $('p-rotate').value = state.producto.rotate; if ($('val-rot')) $('val-rot').innerText = state.producto.rotate + '°'; }
 
   // Opciones
-  $('op-titulo').value = state.opciones.titulo;
-  $('op-cono').value = state.opciones.cono;
-  $('op-desc').value = state.opciones.desc;
+  const opTit = $('op-titulo'); if (opTit) opTit.value = state.opciones.titulo;
+  const opCono = $('op-cono'); if (opCono) opCono.value = state.opciones.cono;
+  const opDesc = $('op-desc'); if (opDesc) opDesc.value = state.opciones.desc;
 
-  if ($('op-scale')) { $('op-scale').value = state.opciones.scale; $('op-val-scale').innerText = state.opciones.scale + 'x'; }
-  if ($('op-x')) { $('op-x').value = state.opciones.x; $('op-val-x').innerText = state.opciones.x + '%'; }
-  if ($('op-y')) { $('op-y').value = state.opciones.y; $('op-val-y').innerText = state.opciones.y + '%'; }
-  if ($('op-rotate')) { $('op-rotate').value = state.opciones.rotate; $('op-val-rot').innerText = state.opciones.rotate + '°'; }
+  if ($('op-scale')) { $('op-scale').value = state.opciones.scale; if ($('op-val-scale')) $('op-val-scale').innerText = state.opciones.scale + 'x'; }
+  if ($('op-x')) { $('op-x').value = state.opciones.x; if ($('op-val-x')) $('op-val-x').innerText = state.opciones.x + '%'; }
+  if ($('op-y')) { $('op-y').value = state.opciones.y; if ($('op-val-y')) $('op-val-y').innerText = state.opciones.y + '%'; }
+  if ($('op-rotate')) { $('op-rotate').value = state.opciones.rotate; if ($('op-val-rot')) $('op-val-rot').innerText = state.opciones.rotate + '°'; }
 
   // Medidas
   const medidasList = $('medidas-list');
-  medidasList.innerHTML = '';
-  state.opciones.medidas.forEach(m => addListItem('medidas-list', 'medida', m));
+  if (medidasList) {
+    medidasList.innerHTML = '';
+    state.opciones.medidas.forEach(m => addListItem('medidas-list', 'medida', m));
+  }
 
   // Bandejas (Limpiar y reconstruir)
-  $('bandejas-container').innerHTML = '';
-  const currentBandejas = [...state.bandejas];
-  state.bandejas = [];
-  currentBandejas.forEach(b => {
-    addBandeja();
-    const newB = state.bandejas[state.bandejas.length - 1];
-    newB.nombre = b.nombre;
-    newB.img = b.img;
-    newB.instrumentos = b.instrumentos;
+  const bndContainer = $('bandejas-container');
+  if (bndContainer) {
+    bndContainer.innerHTML = '';
+    const currentBandejas = [...state.bandejas];
+    state.bandejas = [];
+    currentBandejas.forEach(b => {
+      addBandeja();
+      const newB = state.bandejas[state.bandejas.length - 1];
+      newB.nombre = b.nombre;
+      newB.img = b.img;
+      newB.instrumentos = b.instrumentos;
+      newB.callouts = b.callouts || [];
 
-    $(`name-${newB.id}`).value = b.nombre;
-    const listId = `inst-list-${newB.id}`;
-    $(listId).innerHTML = '';
-    b.instrumentos.forEach(ins => addListItem(listId, 'instrumento', ins.nombre));
+      const inputName = $(`name-${newB.id}`);
+      if (inputName) inputName.value = b.nombre;
 
-    if (b.img) {
-      const zone = $(`zone-bnd-${newB.id}`);
-      if (zone) {
-        zone.classList.add('has-image');
-        zone.querySelector('.upload-inner').innerHTML = `<img src="${b.img}" class="thumb">`;
+      const listId = `inst-list-${newB.id}`;
+      const listEl = $(listId);
+      if (listEl) {
+        listEl.innerHTML = '';
+        b.instrumentos.forEach(ins => addListItem(listId, 'instrumento', ins.nombre));
       }
-    }
-  });
+
+      if (b.img) {
+        const zone = $(`zone-bnd-${newB.id}`);
+        if (zone) {
+          zone.classList.add('has-image');
+          const inner = zone.querySelector('.upload-inner');
+          if (inner) inner.innerHTML = `<img src="${b.img}" class="thumb">`;
+        }
+        // También renderizar el editor de callouts si existe la imagen
+        renderCalloutEditor(newB.id);
+      }
+    });
+  }
 
   // Images in main cards
   if (state.producto.img) {
     const pZone = $('zone-portada');
     if (pZone) {
       pZone.classList.add('has-image');
-      pZone.querySelector('.upload-inner').innerHTML = `<img src="${state.producto.img}" class="thumb">`;
+      const inner = pZone.querySelector('.upload-inner');
+      if (inner) inner.innerHTML = `<img src="${state.producto.img}" class="thumb">`;
     }
   }
   if (state.opciones.img) {
     const oZone = $('zone-implante');
     if (oZone) {
       oZone.classList.add('has-image');
-      oZone.querySelector('.upload-inner').innerHTML = `<img src="${state.opciones.img}" class="thumb">`;
+      const inner = oZone.querySelector('.upload-inner');
+      if (inner) inner.innerHTML = `<img src="${state.opciones.img}" class="thumb">`;
     }
   }
 }
@@ -1013,6 +1030,9 @@ async function loadFromCloud(id) {
     if (!doc.exists) return toast("❌ El archivo ya no existe.");
 
     const data = doc.data();
+
+    // Resetear completamente las bandejas antes de asignar el nuevo estado
+    state.bandejas = [];
     Object.assign(state, data.state);
 
     // Refresh UI & Form
