@@ -28,6 +28,10 @@ const state = {
   opciones: {
     titulo: 'N° Medida',
     img: null,
+    scale: 1,
+    x: 0,
+    y: 0,
+    rotate: 0,
     cono: '',
     desc: '',
     medidas: [],      // ['35.5', '37.5-1', ...]
@@ -54,13 +58,48 @@ const firebaseConfig = {
 // Inicializar Firebase
 let db = null;
 let analytics = null;
+
 try {
   const app = firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   analytics = firebase.analytics();
-  console.log("☁️ Firebase & Analytics activos");
+  console.log("☁️ Firebase & Analytics activos (Modo FREE - Compresión Agresiva)");
 } catch (e) {
   console.error("❌ Error Firebase:", e);
+}
+
+// Helper para comprimir imagen agresivamente para caber en Firestore (límite 1MB total)
+async function compressImage(base64Str, maxWidth = 800, quality = 0.7, format = 'image/jpeg') {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      // Si es PNG (con transparencia), no rellenamos fondo. 
+      // Si es JPEG, el canvas por defecto rellena de negro si no hay fondo.
+      if (format === 'image/jpeg') {
+        ctx.fillStyle = "#ffffff"; // Opcional: rellenar con blanco en lugar de negro
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Usamos el formato solicitado (PNG para preservar transparencia)
+      resolve(canvas.toDataURL(format, quality));
+    };
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -246,6 +285,12 @@ function syncFormToState() {
   state.opciones.titulo = $('op-titulo').value || state.opciones.titulo;
   state.opciones.cono = $('op-cono').value;
   state.opciones.desc = $('op-desc').value;
+
+  if ($('op-scale')) state.opciones.scale = parseFloat($('op-scale').value);
+  if ($('op-x')) state.opciones.x = parseFloat($('op-x').value);
+  if ($('op-y')) state.opciones.y = parseFloat($('op-y').value);
+  if ($('op-rotate')) state.opciones.rotate = parseFloat($('op-rotate').value);
+
   syncMedidas();
 }
 
@@ -270,6 +315,11 @@ function syncStateToForm() {
   $('op-titulo').value = state.opciones.titulo;
   $('op-cono').value = state.opciones.cono;
   $('op-desc').value = state.opciones.desc;
+
+  if ($('op-scale')) { $('op-scale').value = state.opciones.scale; $('op-val-scale').innerText = state.opciones.scale + 'x'; }
+  if ($('op-x')) { $('op-x').value = state.opciones.x; $('op-val-x').innerText = state.opciones.x + '%'; }
+  if ($('op-y')) { $('op-y').value = state.opciones.y; $('op-val-y').innerText = state.opciones.y + '%'; }
+  if ($('op-rotate')) { $('op-rotate').value = state.opciones.rotate; $('op-val-rot').innerText = state.opciones.rotate + '°'; }
 
   // Medidas
   const medidasList = $('medidas-list');
@@ -303,14 +353,18 @@ function syncStateToForm() {
 
   // Images in main cards
   if (state.producto.img) {
-    const pZone = $('p-upload-zone');
-    pZone.classList.add('has-image');
-    pZone.querySelector('.upload-inner').innerHTML = `<img src="${state.producto.img}" class="thumb">`;
+    const pZone = $('zone-portada');
+    if (pZone) {
+      pZone.classList.add('has-image');
+      pZone.querySelector('.upload-inner').innerHTML = `<img src="${state.producto.img}" class="thumb">`;
+    }
   }
   if (state.opciones.img) {
-    const oZone = $('op-upload-zone');
-    oZone.classList.add('has-image');
-    oZone.querySelector('.upload-inner').innerHTML = `<img src="${state.opciones.img}" class="thumb">`;
+    const oZone = $('zone-implante');
+    if (oZone) {
+      oZone.classList.add('has-image');
+      oZone.querySelector('.upload-inner').innerHTML = `<img src="${state.opciones.img}" class="thumb">`;
+    }
   }
 }
 
@@ -454,13 +508,19 @@ function redrawCallouts(bandejaId) {
 // ══════════════════════════════════════════════
 function buildCoverPage() {
   const { nombre, subtitulo, img, scale, x, y, rotate } = state.producto;
-  const t = `transform: translateX(-50%) translate(${x}%, ${y}%) scale(${scale}) rotate(${rotate}deg);`;
+  // Use a frame div to host transformations relative to the container size
+  const transformStyle = `transform: translate(${x}%, ${y}%) scale(${scale}) rotate(${rotate}deg);`;
   return `
     <div class="cat-page cat-cover">
       <div class="cv-logo">
         ${villalbaLogo(112)}
       </div>
-      ${img ? `<img class="cv-product-img" src="${img}" style="${t}" alt="producto">` : ''}
+      ${img ? `
+        <div class="cv-product-container">
+          <div class="cv-product-frame" style="${transformStyle}">
+            <img class="cv-product-img" src="${img}" alt="producto">
+          </div>
+        </div>` : ''}
       <div class="cv-content">
         <p class="cv-subtitle">${escHtml(subtitulo || 'Caja Instrumental')}</p>
         <h1 class="cv-title">${escHtml(nombre || 'Nombre del Producto')}</h1>
@@ -471,8 +531,9 @@ function buildCoverPage() {
 }
 
 function buildOpcionesPage() {
-  const { titulo, img, cono, desc, medidas } = state.opciones;
+  const { titulo, img, scale, x, y, rotate, cono, desc, medidas } = state.opciones;
   const { nombre } = state.producto;
+  const transformStyle = `transform: translate(${x}%, ${y}%) scale(${scale}) rotate(${rotate}deg);`;
   const medidasHtml = medidas.length
     ? medidas.map(m => `<li>${escHtml(m)}</li>`).join('')
     : '<li style="color:#aaa;font-style:italic">Agrega medidas en el panel</li>';
@@ -491,7 +552,10 @@ function buildOpcionesPage() {
           ${desc ? `<p class="opciones-desc">${escHtml(desc)}</p>` : ''}
         </div>
         <div class="opciones-right">
-          ${img ? `<img class="opciones-img" src="${img}" alt="implante">` : '<div style="color:#ccc;font-size:13px;text-align:center;">Sube la imagen<br>del implante</div>'}
+          ${img ? `
+            <div class="opciones-frame" style="${transformStyle}">
+              <img class="opciones-img" src="${img}" alt="implante">
+            </div>` : '<div style="color:#ccc;font-size:13px;text-align:center;">Sube la imagen<br>del implante</div>'}
           ${cono ? `<span class="opciones-cono">${escHtml(cono)}</span>` : ''}
         </div>
       </div>
@@ -524,7 +588,7 @@ function buildBandejaPage(bnd) {
         <div class="tray-photo-container">
           ${bnd.img
       ? `<img class="tray-photo" src="${bnd.img}" alt="bandeja">${calloutDots}`
-      : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.3);font-size:14px;">Sube la foto de la bandeja</div>'
+      : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(0,0,0,.2);font-size:14px;">Sube la foto de la bandeja</div>'
     }
         </div>
         <div class="tray-desc-area">
@@ -645,8 +709,9 @@ async function exportPDF() {
 
   const pages = buildAllPages();
   try {
+    // We construct a wrapper string to ensure CSS is applied correctly in the detached export
     const fullHtml = `
-      <div style="width: 210mm; background: white; margin:0; padding:0;">
+      <div style="width: 210mm; background: white; margin:0; padding:0; display: block;">
         ${pages.join('<div class="html2pdf__page-break"></div>')}
       </div>
     `;
@@ -655,11 +720,19 @@ async function exportPDF() {
       margin: 0,
       filename: defaultFilename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        letterRendering: true,
+        allowTaint: true
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: 'legacy' }
     };
 
+    // Return to generating from string which is more stable in many environments
     const pdfBlob = await html2pdf().set(opt).from(fullHtml).output('blob');
 
     if (fileHandle) {
@@ -678,6 +751,7 @@ async function exportPDF() {
       URL.revokeObjectURL(url);
       toast('✅ PDF exportado (Descarga clásica)');
     }
+
   } catch (err) {
     console.error('Error exportPDF:', err);
     toast('❌ Error en el proceso.');
@@ -824,12 +898,58 @@ async function saveToCloud() {
     btn.innerHTML = "⌛ Guardando...";
     btn.disabled = true;
 
-    // Clonar estado limpiando posibles nulos o undefined que Firestore no quiera
+    // 1. Clonar estado para no afectar la vista actual mientras procesamos
     const stateClone = JSON.parse(JSON.stringify(state));
 
+    // 2. Compresión Agresiva (Opción 2 - Sin Storage)
+    // Procesamos todas las imágenes para reducir su peso drásticamente
+    toast("⌛ Optimizando catálogo para la nube...");
+
+    if (stateClone.producto.img && stateClone.producto.img.startsWith('data:')) {
+      // Usamos PNG para la portada para preservar la transparencia
+      stateClone.producto.img = await compressImage(stateClone.producto.img, 800, 0.7, 'image/png');
+    }
+    if (stateClone.opciones.img && stateClone.opciones.img.startsWith('data:')) {
+      // Usamos PNG para opciones para preservar la transparencia
+      stateClone.opciones.img = await compressImage(stateClone.opciones.img, 700, 0.6, 'image/png');
+    }
+
+    for (const bnd of stateClone.bandejas) {
+      if (bnd.img && bnd.img.startsWith('data:')) {
+        // Las fotos de bandejas se guardan en JPEG con fondo blanco para ahorrar espacio
+        bnd.img = await compressImage(bnd.img, 700, 0.6, 'image/jpeg');
+      }
+    }
+
+    // 3. Saneamiento y validación de tamaño
+    const sanitize = (obj) => {
+      if (Array.isArray(obj)) return obj.map(sanitize);
+      if (obj !== null && typeof obj === 'object') {
+        const clean = {};
+        for (const key in obj) {
+          if (obj[key] !== undefined && typeof obj[key] !== 'function') {
+            clean[key] = sanitize(obj[key]);
+          }
+        }
+        return clean;
+      }
+      return obj;
+    };
+
+    const finalState = sanitize(stateClone);
+
+    // El límite de un doc de Firestore es 1,048,576 bytes
+    const totalSize = JSON.stringify(finalState).length;
+    console.log(`📦 Tamaño final del catálogo: ${(totalSize / 1024).toFixed(2)} KB`);
+
+    if (totalSize > 1000000) {
+      throw new Error("El catálogo sigue superando el límite de la nube. Intenta eliminar alguna bandeja o subir fotos menos pesadas.");
+    }
+
+    // 4. Guardar directamente en Firestore
     const docRef = await db.collection("catalogos").add({
       name,
-      state: stateClone,
+      state: finalState,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 

@@ -13,6 +13,7 @@
     <!-- Firebase SDK v10 -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
     <link rel="stylesheet" href="app.css">
 </head>
@@ -177,6 +178,37 @@
                         <div class="fg"><label>Descripción técnica</label><textarea id="op-desc"
                                 placeholder="El diseño incorpora tres puntos de referencia en la zona proximal..."></textarea>
                         </div>
+
+                        <!-- AJUSTES DE IMAGEN OPCIONES -->
+                        <div class="fg" style="margin-top:4px;">
+                            <label style="display:flex; justify-content:space-between;">
+                                Tamaño (Escala) <span id="op-val-scale">1.0x</span>
+                            </label>
+                            <input id="op-scale" type="range" min="0.5" max="3" step="0.05" value="1"
+                                oninput="document.getElementById('op-val-scale').innerText = this.value + 'x'; syncFormToState(); renderPreview()">
+                        </div>
+                        <div class="fg">
+                            <label style="display:flex; justify-content:space-between;">
+                                Posición Horizontal (X) <span id="op-val-x">0%</span>
+                            </label>
+                            <input id="op-x" type="range" min="-100" max="100" step="1" value="0"
+                                oninput="document.getElementById('op-val-x').innerText = this.value + '%'; syncFormToState(); renderPreview()">
+                        </div>
+                        <div class="fg">
+                            <label style="display:flex; justify-content:space-between;">
+                                Posición Vertical (Y) <span id="op-val-y">0%</span>
+                            </label>
+                            <input id="op-y" type="range" min="-100" max="100" step="1" value="0"
+                                oninput="document.getElementById('op-val-y').innerText = this.value + '%'; syncFormToState(); renderPreview()">
+                        </div>
+                        <div class="fg">
+                            <label style="display:flex; justify-content:space-between;">
+                                Rotación <span id="op-val-rot">0°</span>
+                            </label>
+                            <input id="op-rotate" type="range" min="-180" max="180" step="1" value="0"
+                                oninput="document.getElementById('op-val-rot').innerText = this.value + '°'; syncFormToState(); renderPreview()">
+                        </div>
+
                         <div class="fg">
                             <label>Lista de medidas</label>
                             <div class="list-manager" id="medidas-list"></div>
