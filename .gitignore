@@ -1,0 +1,14 @@
+# IDE
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Large PDF files (exported)
+*.pdf
+
+# Temp files
+*.tmp
+*.log
